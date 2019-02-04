@@ -350,6 +350,18 @@
   }
   window.isElement = isElement; // [DEBUG/]
 
+  function offsetRect(element) {
+      var rect = {};
+      var brect = element.getBoundingClientRect();
+      rect.left = element.offsetLeft;
+      rect.top = element.offsetTop;
+      rect.width = brect.width;
+      rect.height = brect.height;
+      rect.x = rect.left;
+      rect.y = rect.top;
+      return rect;
+  }
+
   /**
    * Get an element's bounding-box that contains coordinates relative to another element, document, or window.
    * @param {Element} element - Target element.
@@ -363,14 +375,21 @@
       var rect, parentRect;
       var prop;
 
-      rect = element.getBoundingClientRect();
-      for (prop in rect) { bBox[prop] = rect[prop]; } // eslint-disable-line guard-for-in
+      rect = offsetRect(element);
+      while (el = el.offsetParent) {
+          if (el === parentElement) break;
+          if (!el) break;
 
-      parentRect = parentElement.getBoundingClientRect();
-      bBox.left -= parentRect.left;
-      bBox.top -= parentRect.top;
-      bBox.right -= parentRect.left;
-      bBox.bottom -= parentRect.top;
+          parentRect = offsetRect(el);
+          rect.left += parentRect.left;
+          rect.top += parentRect.top;
+      }
+      rect.x = rect.left;
+      rect.y = rect.top;
+      rect.right = rect.left + rect.width;
+      rect.bottom = rect.top + rect.height;
+
+      for (prop in rect) { bBox[prop] = rect[prop]; } // eslint-disable-line guard-for-in
 
       return bBox;
     }
