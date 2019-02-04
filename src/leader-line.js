@@ -1756,8 +1756,18 @@
               cx[i] = socketXY.x + offset.x;
               cy[i] = socketXY.y + offset.y;
             });
-            pathList.push([socketXY2Point(curSocketXYSE[0]),
-              {x: cx[0], y: cy[0]}, {x: cx[1], y: cy[1]}, socketXY2Point(curSocketXYSE[1])]);
+
+            // If the points are too close, fall back to the straight line
+            // **************
+            var startPoint = socketXY2Point(curSocketXYSE[0]);
+            var endPoint = socketXY2Point(curSocketXYSE[1]);
+            if ((Math.abs(startPoint.x - endPoint.x) < 16) && (Math.abs(startPoint.y - endPoint.y) < 16)) {
+                pathList.push([startPoint, endPoint]);
+            }
+            else {
+                pathList.push([startPoint,
+                  {x: cx[0], y: cy[0]}, {x: cx[1], y: cy[1]}, endPoint]);
+            }
           }/* @/EXPORT@ */)([curSocketGravitySE[0],
             curStats.position_path === PATH_MAGNET ? 0 : curSocketGravitySE[1]]);
           break;
