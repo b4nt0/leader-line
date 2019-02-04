@@ -351,6 +351,50 @@
   window.isElement = isElement; // [DEBUG/]
 
   /**
+   * Get an element's bounding-box that contains coordinates relative to another element, document, or window.
+   * @param {Element} element - Target element.
+   * @param {Element} parentElement - Parent element.
+   * @returns {(BBox|null)} A bounding-box or null when failed.
+   */
+  function getBBoxRel(element, parentElement) {
+    if (parentElement) {
+      var bBox = {};
+      var el = element;
+      var rect, parentRect;
+      var prop;
+
+      rect = element.getBoundingClientRect();
+      for (prop in rect) { bBox[prop] = rect[prop]; } // eslint-disable-line guard-for-in
+
+      parentRect = parentElement.getBoundingClientRect();
+      bBox.left -= parentRect.left;
+      bBox.top -= parentRect.top;
+      bBox.right -= parentRect.left;
+      bBox.bottom -= parentRect.top;
+
+      return bBox;
+    }
+    else {
+      return getBBox(element);
+    }
+  }
+
+  /**
+   * Get an element's bounding-box that contains coordinates relative to document of specified window.
+   * @param {Element} element - Target element.
+   * @param {props} props - `props` of `LeaderLine` instance.
+   * @returns {(BBox|null)} A bounding-box or null when failed.
+   */
+  function getBBoxNestProps(element, props) {
+    if (!props.parentElement) {
+      return getBBoxNest(element, props.baseWindow);
+    }
+    else {
+      return getBBoxRel(element, props.parentElement);
+    }
+  }
+
+  /**
    * Get an element's bounding-box that contains coordinates relative to the element's document or window.
    * @param {Element} element - Target element.
    * @param {boolean} [relWindow] - Whether it's relative to the element's window, or document (i.e. `<html>`).
@@ -963,7 +1007,12 @@
     });
 
     if (props.baseWindow && props.svg) {
-      props.baseWindow.document.body.removeChild(props.svg);
+      if (props.parentElement) {
+        props.parentElement.removeChild(props.svg);
+      }
+      else {
+        props.baseWindow.document.body.removeChild(props.svg);
+      }
     }
     props.baseWindow = newWindow;
     setupWindow(newWindow);
@@ -1110,7 +1159,12 @@
       svg.style.visibility = 'hidden';
     }
 
-    baseDocument.body.appendChild(svg);
+    if (!!props.parentElement) {
+      props.parentElement.appendChild(svg);
+    }
+    else {
+      baseDocument.body.appendChild(svg);
+    }
 
     // label (after appendChild(svg), bBox is used)
     [0, 1, 2].forEach(function(i) {
@@ -1528,7 +1582,7 @@
           attachProps.conf.getStrokeWidth(attachProps, props) : 0,
         anchorBBox = isAttach !== false && attachProps.conf.getBBoxNest ?
           attachProps.conf.getBBoxNest(attachProps, props, strokeWidth) :
-          getBBoxNest(anchor, props.baseWindow);
+          getBBoxNestProps(anchor, props);
 
       curStats.capsMaskAnchor_pathDataSE[i] = isAttach !== false && attachProps.conf.getPathData ?
         attachProps.conf.getPathData(attachProps, props, strokeWidth) : bBox2PathData(anchorBBox);
@@ -3348,8 +3402,9 @@
    * @param {Element} [start] - Alternative to `options.start`.
    * @param {Element} [end] - Alternative to `options.end`.
    * @param {Object} [options] - Initial options.
+   * @param {Element} [parentElement] - parent element, which must be a common parent to both start and end.
    */
-  function LeaderLine(start, end, options) {
+  function LeaderLine(start, end, options, parentElement) {
     var props = {
       // Initialize properties as array.
       options: {anchorSE: [], socketSE: [], socketGravitySE: [], plugSE: [], plugColorSE: [], plugSizeSE: [],
@@ -3357,6 +3412,8 @@
       optionIsAttach: {anchorSE: [false, false], labelSEM: [false, false, false]},
       curStats: {}, aplStats: {}, attachments: [], events: {}, reflowTargets: []
     };
+
+    if (parentElement) props.parentElement = parentElement;
 
     initStats(props.curStats, STATS);
     initStats(props.aplStats, STATS);
@@ -3385,6 +3442,8 @@
       if (start) { options.start = start; }
       if (end) { options.end = end; }
     }
+    if (parentElement) options.parentElement = parentElement;
+
     props.isShown = props.aplStats.show_on = !options.hide; // isShown is applied in setOptions -> bindWindow
     this.setOptions(options);
   }
@@ -3517,7 +3576,12 @@
     props.attachments.slice().forEach(function(attachProps) { unbindAttachment(props, attachProps); });
 
     if (props.baseWindow && props.svg) {
-      props.baseWindow.document.body.removeChild(props.svg);
+      if (props.parentElement) {
+        props.parentElement.removeChild(props.svg);
+      }
+      else {
+        props.baseWindow.document.body.removeChild(props.svg);
+      }
     }
     delete insProps[this._id];
   };
@@ -3674,7 +3738,7 @@
       },
 
       getBBoxNest: function(attachProps, props) {
-        var bBox = getBBoxNest(attachProps.element, props.baseWindow),
+        var bBox = getBBoxNestProps(attachProps.element, props),
           width = bBox.width, height = bBox.height;
         bBox.width = bBox.height = 0;
         bBox.left = bBox.right = bBox.left + attachProps.x[0] * (attachProps.x[1] ? width : 1);
@@ -3773,7 +3837,12 @@
         attachProps.path.style.fill = attachProps.fill || 'none';
         attachProps.isShown = false;
         svg.style.visibility = 'hidden';
-        baseDocument.body.appendChild(svg);
+        if (attachProps.parentElement) {
+          attachProps.parentElement.appendChild(svg);
+        }
+        else {
+          baseDocument.body.appendChild(svg);
+        }
         setupWindow((window = baseDocument.defaultView));
         attachProps.bodyOffset = getBodyOffset(window); // Get `bodyOffset`
 
@@ -3869,7 +3938,7 @@
       },
 
       getPathData: function(attachProps, props) {
-        var bBox = getBBoxNest(attachProps.element, props.baseWindow);
+        var bBox = getBBoxNestProps(attachProps.element, props);
         return pathList2PathData(attachProps.curStats.pathListRel, function(point) {
           point.x += bBox.left;
           point.y += bBox.top;
@@ -3877,7 +3946,7 @@
       },
 
       getBBoxNest: function(attachProps, props) {
-        var bBox = getBBoxNest(attachProps.element, props.baseWindow),
+        var bBox = getBBoxNestProps(attachProps.element, props),
           bBoxRel = attachProps.curStats.bBoxRel;
         return {
           left: bBoxRel.left + bBox.left,
@@ -4364,7 +4433,7 @@
       },
 
       getBBoxNest: function(attachProps, props) {
-        return getBBoxNest(attachProps.element, props.baseWindow);
+        return getBBoxNestProps(attachProps.element, props);
       },
 
       // show/hide immediately
