@@ -1,4 +1,6 @@
 .sass-cache
 .vscode
+.idea
 node_modules
 temp
+./leader-line.min.js
