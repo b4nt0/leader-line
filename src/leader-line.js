@@ -1179,7 +1179,12 @@
     }
 
     if (!!props.parentElement) {
-      props.parentElement.appendChild(svg);
+      if (props.prepend && props.parentElement.firstChild) {
+        props.parentElement.insertBefore(svg, props.parentElement.firstChild);
+      }
+      else {
+        props.parentElement.appendChild(svg);
+      }
     }
     else {
       baseDocument.body.appendChild(svg);
@@ -3433,7 +3438,7 @@
    * @param {Object} [options] - Initial options.
    * @param {Element} [parentElement] - parent element, which must be a common parent to both start and end.
    */
-  function LeaderLine(start, end, options, parentElement) {
+  function LeaderLine(start, end, options, parentElement, prepend) {
     var props = {
       // Initialize properties as array.
       options: {anchorSE: [], socketSE: [], socketGravitySE: [], plugSE: [], plugColorSE: [], plugSizeSE: [],
@@ -3443,6 +3448,7 @@
     };
 
     if (parentElement) props.parentElement = parentElement;
+    if (prepend) props.prepend = true;
 
     initStats(props.curStats, STATS);
     initStats(props.aplStats, STATS);
